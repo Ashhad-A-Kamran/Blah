@@ -153,7 +153,7 @@ while running:
         # Detect hand gesture
         gesture_pos, pinching = detect_hand_gesture(frame)
         if gesture_pos:
-            player_pos[0] = SCREEN_WIDTH - gesture_pos[0]  # Move in the opposite direction of the finger
+            player_pos[0] = SCREEN_WIDTH - gesture_pos[0]
             player_pos[1] = gesture_pos[1]
 
             # Shoot projectile if pinching gesture is detected
