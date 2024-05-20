@@ -2,6 +2,7 @@ import pygame
 import cv2
 import mediapipe as mp
 import random
+import time
 
 # Initialize Pygame
 pygame.init()
@@ -23,7 +24,7 @@ obstacle_image = pygame.transform.scale(obstacle_image, (50, 50))  # Resize to 5
 
 # Game variables
 clock = pygame.time.Clock()
-FPS = 30
+FPS = 60
 player_pos = [400, 500]
 player_speed = 5
 
@@ -34,9 +35,15 @@ obstacles = []
 
 # Initialize OpenCV and MediaPipe
 cap = cv2.VideoCapture(0)
+ret, frame = cap.read()
+
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.7)
 mp_draw = mp.solutions.drawing_utils
+
+# High score
+high_score = 0
+start_time = time.time()
 
 def detect_hand_gesture(frame):
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -48,7 +55,6 @@ def detect_hand_gesture(frame):
             # Get the coordinates of the index finger tip
             x = int(hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].x * SCREEN_WIDTH)
             y = int(hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].y * SCREEN_HEIGHT)
-            
             # Flip the x-coordinate to correct the direction
             x = SCREEN_WIDTH - x
             
@@ -58,7 +64,7 @@ def detect_hand_gesture(frame):
 def spawn_obstacle():
     x = random.randint(0, SCREEN_WIDTH - 50)  # Random x-coordinate within screen bounds
     y = -50  # Start above the screen
-    obstacles.append(pygame.Rect(x, y, 50, 50)) 
+    obstacles.append(pygame.Rect(x, y, 50, 50))
 
 def check_collision():
     player_rect = pygame.Rect(player_pos[0], player_pos[1], 50, 50)
@@ -67,56 +73,101 @@ def check_collision():
             return True
     return False
 
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+def display_message(text, font, color, position):
+    message = font.render(text, True, color)
+    screen.blit(message, position)
 
-    # Capture frame from webcam
-    ret, frame = cap.read()
+def reset_game():
+    global player_pos, obstacles, obstacle_spawn_timer, start_time
+    player_pos = [400, 500]
+    obstacles = []
+    obstacle_spawn_timer = 0
+    start_time = time.time()
+
+# Main loop
+running = True
+game_over = False
+
+# Set up fonts
+font = pygame.font.SysFont(None, 55)
+small_font = pygame.font.SysFont(None, 35)
+
+while running:
+    cv2.imshow('screen', frame)
     if not ret:
         break
     
-    # Detect hand gesture
-    gesture_pos = detect_hand_gesture(frame)
-    if gesture_pos:
-        player_pos[0] = gesture_pos[0]
-        player_pos[1] = gesture_pos[1]
+    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif game_over and event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = event.pos
+            if try_again_button.collidepoint(mouse_pos):
+                game_over = False
+                reset_game()
 
-    # Update obstacle spawn timer
-    obstacle_spawn_timer += 1
-    if obstacle_spawn_timer == 60:  # Spawn every 2 seconds (30 FPS * 2 seconds)
-        spawn_obstacle()
-        obstacle_spawn_timer = 0
-    
-    # Move obstacles
-    for obstacle in obstacles:
-        obstacle.y += obstacle_speed
-    
-    # Remove obstacles that go beyond the screen
-    obstacles = [obstacle for obstacle in obstacles if obstacle.y < SCREEN_HEIGHT]
-    
-    # Check for collisions
-    if check_collision():
-        running = False
-    
-    # Clear screen
-    screen.fill((0, 0, 0))
-    
-    # Draw obstacles
-    for obstacle in obstacles:
-        screen.blit(obstacle_image, obstacle.topleft)
-    
-    # Draw player ship
-    ship_rect.center = player_pos
-    screen.blit(ship_image, ship_rect.topleft)
-    
+    if not game_over:
+        # Capture frame from webcam
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        # Detect hand gesture
+        gesture_pos = detect_hand_gesture(frame)
+        if gesture_pos:
+            player_pos[0] = gesture_pos[0]
+            player_pos[1] = gesture_pos[1]
+
+        # Update obstacle spawn timer
+        obstacle_spawn_timer += 1
+        if obstacle_spawn_timer >= FPS:  # Spawn every second
+            spawn_obstacle()
+            obstacle_spawn_timer = 0
+        
+        # Move obstacles
+        for obstacle in obstacles:
+            obstacle.y += obstacle_speed
+        
+        # Remove obstacles that go beyond the screen
+        obstacles = [obstacle for obstacle in obstacles if obstacle.y < SCREEN_HEIGHT]
+        
+        # Check for collisions
+        if check_collision():
+            game_over = True
+            high_score = int(time.time() - start_time)
+
+        # Clear screen
+        screen.fill((0, 0, 0))
+        
+        # Draw obstacles
+        for obstacle in obstacles:
+            screen.blit(obstacle_image, obstacle.topleft)
+        
+        # Draw player ship
+        ship_rect.center = player_pos
+        screen.blit(ship_image, ship_rect.topleft)
+        
+        # Display high score
+        display_message(f"High Score: {int(time.time() - start_time)}", small_font, (255, 255, 255), (10, 10))
+        
+    else:
+        # Game over screen
+        screen.fill((0, 0, 0))
+        display_message("Game Over", font, (255, 0, 0), (SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2 - 50))
+        try_again_button = pygame.Rect(SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2 + 20, 200, 50)
+        pygame.draw.rect(screen, (0, 255, 0), try_again_button)
+        display_message("Try Again", small_font, (0, 0, 0), (SCREEN_WIDTH//2 - 60, SCREEN_HEIGHT//2 + 30))
+        display_message(f"High Score: {high_score}", small_font, (255, 255, 255), (10, 10))
+
     # Update screen
     pygame.display.flip()
     
     # Cap the frame rate
     clock.tick(FPS)
+
+    if cv2.waitKey(1) & 0xFF == ord("q"):
+        break
 
 # Release resources
 cap.release()
