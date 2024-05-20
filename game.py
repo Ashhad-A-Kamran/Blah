@@ -132,6 +132,11 @@ font = pygame.font.SysFont(None, 55)
 small_font = pygame.font.SysFont(None, 35)
 
 while running:
+    cv2.imshow('screen', frame)
+    if not ret:
+        break
+    
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
