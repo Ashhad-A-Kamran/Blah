@@ -9,13 +9,14 @@ pygame.init()
 
 # Screen dimensions
 SCREEN_WIDTH = 1920
-SCREEN_HEIGHT = 1200
+SCREEN_HEIGHT = 1200 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Gesture Controlled Game")
 
+
 # Load the ship image and resize it
 ship_image = pygame.image.load('./assets/ship.png')
-ship_image = pygame.transform.scale(ship_image, (100, 100))  # Resize to 50x50 pixels
+ship_image = pygame.transform.scale(ship_image, (100, 100))  # Resize to 100x100 pixels
 ship_rect = ship_image.get_rect()
 
 # Load obstacle images and resize them
@@ -23,6 +24,7 @@ large_obstacle_image = pygame.image.load('./assets/rock1.png')
 large_obstacle_image = pygame.transform.scale(large_obstacle_image, (50, 50))  # Resize to 50x50 pixels
 small_obstacle_image = pygame.image.load('./assets/rock2.png')
 small_obstacle_image = pygame.transform.scale(small_obstacle_image, (25, 25))  # Resize to 25x25 pixels
+
 
 # Game variables
 clock = pygame.time.Clock()
@@ -101,9 +103,16 @@ def shoot_projectile():
 
 # Function to check collisions between the spaceship and obstacles
 def check_collision():
-    player_rect = pygame.Rect(player_pos[0], player_pos[1], 50, 50)
+    player_rect = pygame.Rect(player_pos[0], player_pos[1], 80, 80)
     for obstacle in small_obstacles:
         if player_rect.colliderect(obstacle):
+            return True
+    return False
+
+def check_collision2():
+    player_rect = pygame.Rect(player_pos[0], player_pos[1], 80, 80)
+    for obstacle2 in obstacles:
+        if player_rect.colliderect(obstacle2):
             return True
     return False
 # Function to update the obstacle speed based on the level
@@ -155,7 +164,7 @@ while running:
         
         # Flip the frame horizontally
         frame = cv2.flip(frame, 1)
-        
+
         # Detect hand gesture
         gesture_pos, pinching = detect_hand_gesture(frame)
         if gesture_pos:
@@ -201,7 +210,7 @@ while running:
                     projectiles.remove(projectile)
 
         # Check for collisions with player and small obstacles
-        if check_collision():
+        if check_collision() or check_collision2():
             game_over = True
             level = 0
             collision_time = time.time()
@@ -236,6 +245,7 @@ while running:
         # Display high score and level
         display_message(f"High Score: {current_score}", small_font, (255, 255, 255), (10, 10))
         display_message(f"Level: {level}", small_font, (255, 255, 255), (10, 50))
+        display_message("Avoid small obstacles and shoot large ones!", font, (255, 255, 255), (SCREEN_WIDTH // 2 - 400, 30))
 
     else:
         # Display game over message and try again button
